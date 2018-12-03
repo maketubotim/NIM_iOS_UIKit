@@ -158,7 +158,7 @@
     teamNotify.type             = TeamCardRowItemTypeSwitch;
 
     NIMTeamCardRowItem *itemQuit = [[NIMTeamCardRowItem alloc] init];
-    itemQuit.title            = @"退出讨论组";
+    itemQuit.title            = @"退出讨论组Tim";
     itemQuit.action           = @selector(quitTeam);
     itemQuit.rowHeight        = 60.f;
     itemQuit.type             = TeamCardRowItemTypeRedButton;
@@ -168,7 +168,7 @@
         isTop = [_exConfig[kNIMNormalTeamCardConfigTopKey] boolValue];
     }
     NIMTeamCardRowItem *itemTop = [[NIMTeamCardRowItem alloc] init];
-    itemTop.title            = @"聊天置顶";
+    itemTop.title            = @"聊天置顶Tim";
     itemTop.switchOn         = isTop;
     itemTop.rowHeight        = 50.f;
     itemTop.type             = TeamCardRowItemTypeSwitch;

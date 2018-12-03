@@ -294,7 +294,7 @@
     teamName.actionDisabled = !canEdit;
     
     NIMTeamCardRowItem *teamNick = [[NIMTeamCardRowItem alloc] init];
-    teamNick.title = @"群昵称";
+    teamNick.title = @"群昵称Tim";
     teamNick.subTitle = self.myTeamInfo.nickname;
     teamNick.action = @selector(updateTeamNick);
     teamNick.rowHeight = 50.f;
@@ -302,8 +302,8 @@
 
     
     NIMTeamCardRowItem *teamIntro = [[NIMTeamCardRowItem alloc] init];
-    teamIntro.title = @"群介绍";
-    teamIntro.subTitle = self.team.intro.length ? self.team.intro : (canEdit ? @"点击填写群介绍" : @"");
+    teamIntro.title = @"群介绍Tim";
+    teamIntro.subTitle = self.team.intro.length ? self.team.intro : (canEdit ? @"点击填写群介绍Tim" : @"");
     teamIntro.action = @selector(updateTeamIntro);
     teamIntro.rowHeight = 50.f;
     teamIntro.type   = TeamCardRowItemTypeCommon;
@@ -323,7 +323,7 @@
     teamNotify.type   = TeamCardRowItemTypeCommon;
 
     NIMTeamCardRowItem *itemQuit = [[NIMTeamCardRowItem alloc] init];
-    itemQuit.title = @"退出高级群";
+    itemQuit.title = @"退出高级群Tim";
     itemQuit.action = @selector(quitTeam);
     itemQuit.rowHeight = 60.f;
     itemQuit.type   = TeamCardRowItemTypeRedButton;
