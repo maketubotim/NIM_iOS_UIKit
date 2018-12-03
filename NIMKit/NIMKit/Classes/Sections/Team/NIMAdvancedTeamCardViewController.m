@@ -329,14 +329,14 @@
     itemQuit.type   = TeamCardRowItemTypeRedButton;
     
     NIMTeamCardRowItem *itemDismiss = [[NIMTeamCardRowItem alloc] init];
-    itemDismiss.title  = @"解散群聊";
+    itemDismiss.title  = @"删除并退出聊天";
     itemDismiss.action = @selector(dismissTeam);
     itemDismiss.rowHeight = 60.f;
     itemDismiss.type   = TeamCardRowItemTypeRedButton;
     
     
     NIMTeamCardRowItem *itemAuth = [[NIMTeamCardRowItem alloc] init];
-    itemAuth.title  = @"身份验证";
+    itemAuth.title  = @"身份验证Tim";
     itemAuth.subTitle = [self joinModeText:self.team.joinMode];
     itemAuth.action = @selector(changeAuthMode);
     itemAuth.actionDisabled = !canEdit;
