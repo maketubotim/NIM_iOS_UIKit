@@ -129,7 +129,7 @@
     [_titleLabel sizeToFit];
     [_createTimeLabel sizeToFit];
     [_numberLabel sizeToFit];
-
+    
     self.titleLabel.nim_width = self.titleLabel.nim_width > MaxTitleLabelWidth ? MaxTitleLabelWidth : self.titleLabel.nim_width;
     self.avatar.nim_left = AvatarLeft;
     self.avatar.nim_top  = AvatarTop;
@@ -163,7 +163,7 @@
     UIActionSheet *_beInviteActionSheet;
     UIActionSheet *_updateInfoActionSheet;
     UIActionSheet *_avatarActionSheet;
-
+    
 }
 
 @property (nonatomic,strong) UITableView *tableView;
@@ -208,7 +208,7 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     NIMAdvancedTeamCardHeaderView *headerView = [[NIMAdvancedTeamCardHeaderView alloc] initWithTeam:self.team];
-
+    
     headerView.delegate = self;
     headerView.nim_size = [headerView sizeThatFits:self.view.nim_size];
     self.navigationItem.title = self.team.teamName;
@@ -265,10 +265,10 @@
             wself.memberData = members;
         }else if(error.code == NIMRemoteErrorCodeTeamNotMember){
             [wself.view makeToast:@"你已经不在群里" duration:2
-                                position:CSToastPositionCenter];
+                         position:CSToastPositionCenter];
         }else{
             [wself.view makeToast:[NSString stringWithFormat:@"拉好友失败 error: %zd",error.code] duration:2
-                                position:CSToastPositionCenter];
+                         position:CSToastPositionCenter];
         }
         handler(error);
     }];
@@ -294,16 +294,16 @@
     teamName.actionDisabled = !canEdit;
     
     NIMTeamCardRowItem *teamNick = [[NIMTeamCardRowItem alloc] init];
-    teamNick.title = @"群昵称Tim";
+    teamNick.title = @"群昵称";
     teamNick.subTitle = self.myTeamInfo.nickname;
     teamNick.action = @selector(updateTeamNick);
     teamNick.rowHeight = 50.f;
     teamNick.type   = TeamCardRowItemTypeCommon;
-
+    
     
     NIMTeamCardRowItem *teamIntro = [[NIMTeamCardRowItem alloc] init];
-    teamIntro.title = @"群介绍Tim";
-    teamIntro.subTitle = self.team.intro.length ? self.team.intro : (canEdit ? @"点击填写群介绍Tim" : @"");
+    teamIntro.title = @"群介绍";
+    teamIntro.subTitle = self.team.intro.length ? self.team.intro : (canEdit ? @"点击填写群介绍" : @"");
     teamIntro.action = @selector(updateTeamIntro);
     teamIntro.rowHeight = 50.f;
     teamIntro.type   = TeamCardRowItemTypeCommon;
@@ -321,22 +321,22 @@
     teamNotify.action = @selector(updateTeamNotify);
     teamNotify.rowHeight = 50.f;
     teamNotify.type   = TeamCardRowItemTypeCommon;
-
+    
     NIMTeamCardRowItem *itemQuit = [[NIMTeamCardRowItem alloc] init];
-    itemQuit.title = @"退出高级群Tim";
+    itemQuit.title = @"退出高级群";
     itemQuit.action = @selector(quitTeam);
     itemQuit.rowHeight = 60.f;
     itemQuit.type   = TeamCardRowItemTypeRedButton;
     
     NIMTeamCardRowItem *itemDismiss = [[NIMTeamCardRowItem alloc] init];
-    itemDismiss.title  = @"删除并退出聊天";
+    itemDismiss.title  = @"解散群聊";
     itemDismiss.action = @selector(dismissTeam);
     itemDismiss.rowHeight = 60.f;
     itemDismiss.type   = TeamCardRowItemTypeRedButton;
     
     
     NIMTeamCardRowItem *itemAuth = [[NIMTeamCardRowItem alloc] init];
-    itemAuth.title  = @"身份验证Tim";
+    itemAuth.title  = @"身份验证";
     itemAuth.subTitle = [self joinModeText:self.team.joinMode];
     itemAuth.action = @selector(changeAuthMode);
     itemAuth.actionDisabled = !canEdit;
@@ -379,20 +379,20 @@
     
     if (isOwner) {
         self.bodyData = @[
-                  @[teamMember],
-                  @[teamName,teamNick,teamIntro,teamAnnouncement,teamNotify, itemTop],
-                  @[itemAuth],
-                  @[itemInvite,itemUpdateInfo,itemBeInvite],
-                  @[itemDismiss],
-                 ];
+                          @[teamMember],
+                          @[teamName,teamNick,teamIntro,teamAnnouncement,teamNotify, itemTop],
+                          @[itemAuth],
+                          @[itemInvite,itemUpdateInfo,itemBeInvite],
+                          @[itemDismiss],
+                          ];
     }else if(isManager){
         self.bodyData = @[
-                 @[teamMember],
-                 @[teamName,teamNick,teamIntro,teamAnnouncement,teamNotify, itemTop],
-                 @[itemAuth],
-                 @[itemInvite,itemUpdateInfo,itemBeInvite],
-                 @[itemQuit],
-                 ];
+                          @[teamMember],
+                          @[teamName,teamNick,teamIntro,teamAnnouncement,teamNotify, itemTop],
+                          @[itemAuth],
+                          @[itemInvite,itemUpdateInfo,itemBeInvite],
+                          @[itemQuit],
+                          ];
     }else{
         self.bodyData = @[
                           @[teamMember],
@@ -744,12 +744,12 @@
     [[NIMSDK sharedSDK].teamManager addUsers:selectedContacts toTeam:self.team.teamId postscript:postscript completion:^(NSError *error, NSArray *members) {
         if (!error) {
             [self.view makeToast:@"邀请成功"
-                               duration:2
-                               position:CSToastPositionCenter];
+                        duration:2
+                        position:CSToastPositionCenter];
         }else{
             [self.view makeToast:[NSString stringWithFormat:@"邀请失败 code:%zd",error.code]
-                               duration:2
-                               position:CSToastPositionCenter];
+                        duration:2
+                        position:CSToastPositionCenter];
         }
     }];
 }
@@ -790,11 +790,11 @@
                     if (!error) {
                         self.team.teamName = name;
                         [self.view makeToast:@"修改成功" duration:2
-                                           position:CSToastPositionCenter];
+                                    position:CSToastPositionCenter];
                         [self reloadData];
                     }else{
                         [self.view makeToast:[NSString stringWithFormat:@"修改失败 code:%zd",error.code] duration:2
-                                           position:CSToastPositionCenter];
+                                    position:CSToastPositionCenter];
                     }
                 }];
             }
@@ -867,7 +867,7 @@
         default:
             break;
     }
-
+    
 }
 
 - (void)dismissTeamAlert:(NSInteger)index{

@@ -97,11 +97,11 @@
     __weak typeof(self) wself = self;
     [self requestData:^(NSError *error, NSArray *data) {
         if (!error) {
-           [wself refreshWithMembers:data];
+            [wself refreshWithMembers:data];
         }else{
             [wself.view makeToast:@"讨论组成员获取失败"];
         }
-
+        
     }];
 }
 
@@ -156,9 +156,9 @@
     teamNotify.switchOn         = [self.team notifyStateForNewMsg] == NIMTeamNotifyStateAll;
     teamNotify.rowHeight        = 50.f;
     teamNotify.type             = TeamCardRowItemTypeSwitch;
-
+    
     NIMTeamCardRowItem *itemQuit = [[NIMTeamCardRowItem alloc] init];
-    itemQuit.title            = @"退出讨论组Tim";
+    itemQuit.title            = @"退出讨论组";
     itemQuit.action           = @selector(quitTeam);
     itemQuit.rowHeight        = 60.f;
     itemQuit.type             = TeamCardRowItemTypeRedButton;
@@ -168,7 +168,7 @@
         isTop = [_exConfig[kNIMNormalTeamCardConfigTopKey] boolValue];
     }
     NIMTeamCardRowItem *itemTop = [[NIMTeamCardRowItem alloc] init];
-    itemTop.title            = @"聊天置顶Tim";
+    itemTop.title            = @"聊天置顶";
     itemTop.switchOn         = isTop;
     itemTop.rowHeight        = 50.f;
     itemTop.type             = TeamCardRowItemTypeSwitch;
@@ -209,20 +209,20 @@
                                                   toTeam:self.team.teamId
                                               postscript:@"邀请你加入讨论组"
                                               completion:^(NSError *error,NSArray *members) {
-                    [NIMKitProgressHUD dismiss];
-                    if (!error) {
-                        if (self.team.type == NIMTeamTypeNormal) {
-                            [wself addHeaderDatas:members];
-                        }else{
-                            [wself.view makeToast:@"邀请成功，等待验证" duration:2.0 position:CSToastPositionCenter];
-                        }
-                        [wself refreshTableHeader:self.view.nim_width];
-                    }else{
-                        [wself.view makeToast:@"邀请失败"];
-                    }
-                    wself.currentOpera = CardHeaderOpeatorNone;
-                    
-                }];
+                                                  [NIMKitProgressHUD dismiss];
+                                                  if (!error) {
+                                                      if (self.team.type == NIMTeamTypeNormal) {
+                                                          [wself addHeaderDatas:members];
+                                                      }else{
+                                                          [wself.view makeToast:@"邀请成功，等待验证" duration:2.0 position:CSToastPositionCenter];
+                                                      }
+                                                      [wself refreshTableHeader:self.view.nim_width];
+                                                  }else{
+                                                      [wself.view makeToast:@"邀请失败"];
+                                                  }
+                                                  wself.currentOpera = CardHeaderOpeatorNone;
+                                                  
+                                              }];
             }
                 break;
             default:
