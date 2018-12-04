@@ -24,8 +24,10 @@
 #import "NIMAvatarImageView.h"
 #import "NIMKitProgressHUD.h"
 #import "NIMTeamNotifyUpdateViewController.h"
-
-
+//by tim
+#import "NIMAdvancedTeamIconCell.h"
+#import "NIMKit.h"
+#import <SDWebImage/UIImageView+WebCache.h>
 #pragma mark - Team Header View
 #define CardHeaderHeight 89
 
@@ -149,7 +151,15 @@
 #define TableMemberCellReuseId  @"tableMemberCell"
 #define TableSwitchReuseId      @"tableSwitchCell"
 
-@interface NIMAdvancedTeamCardViewController ()<NIMAdvancedTeamMemberCellActionDelegate,NIMContactSelectDelegate,NIMTeamSwitchProtocol,NIMAdvancedTeamCardHeaderViewDelegate,NIMTeamManagerDelegate,UIActionSheetDelegate,UITableViewDataSource,UITableViewDelegate,UIImagePickerControllerDelegate,UINavigationControllerDelegate>{
+static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
+#define HEIGHT ([UIScreen mainScreen].bounds.size.height)
+#define WIDTH ([UIScreen mainScreen].bounds.size.width)
+
+#define HeadWidth 60
+#define HeadHeight 80
+#define HeadNum 5
+
+@interface NIMAdvancedTeamCardViewController ()<NIMAdvancedTeamMemberCellActionDelegate,NIMContactSelectDelegate,NIMTeamSwitchProtocol,NIMAdvancedTeamCardHeaderViewDelegate,NIMTeamManagerDelegate,UIActionSheetDelegate,UITableViewDataSource,UITableViewDelegate,UIImagePickerControllerDelegate,UINavigationControllerDelegate,UICollectionViewDelegate,UICollectionViewDataSource>{
     
     UIAlertView *_updateTeamNameAlertView;
     UIAlertView *_updateTeamNickAlertView;
@@ -163,7 +173,7 @@
     UIActionSheet *_beInviteActionSheet;
     UIActionSheet *_updateInfoActionSheet;
     UIActionSheet *_avatarActionSheet;
-    
+    BOOL isOpen;
 }
 
 @property (nonatomic,strong) UITableView *tableView;
@@ -178,9 +188,20 @@
 
 @property (nonatomic,strong) NSDictionary *exConfig;
 
+@property (strong, nonatomic) UICollectionView *peploCollection;
+
+@property (nonatomic, copy)NSMutableArray *dataSoure;
+
 @end
 
 @implementation NIMAdvancedTeamCardViewController
+
+- (NSMutableArray *)dataSoure{
+    if (!_dataSoure) {
+        _dataSoure = [[NSMutableArray alloc]init];
+    }
+    return _dataSoure;
+}
 
 - (instancetype)initWithTeam:(NIMTeam *)team{
     self = [super initWithNibName:nil bundle:nil];
@@ -205,18 +226,31 @@
     [[NIMSDK sharedSDK].teamManager removeDelegate:self];
 }
 
+
 - (void)viewDidLoad {
     [super viewDidLoad];
-    NIMAdvancedTeamCardHeaderView *headerView = [[NIMAdvancedTeamCardHeaderView alloc] initWithTeam:self.team];
+    //    NIMAdvancedTeamCardHeaderView *headerView = [[NIMAdvancedTeamCardHeaderView alloc] initWithTeam:self.team];
+    //
+    //    headerView.delegate = self;
+    //    headerView.nim_size = [headerView sizeThatFits:self.view.nim_size];
     
-    headerView.delegate = self;
-    headerView.nim_size = [headerView sizeThatFits:self.view.nim_size];
+    //创建collectionView
+    UICollectionViewFlowLayout *flowLayout= [[UICollectionViewFlowLayout alloc]init];
+    self.peploCollection = [[UICollectionView alloc] initWithFrame:CGRectMake(0, 0, 0, 0) collectionViewLayout:flowLayout];
+    self.peploCollection.backgroundColor = [UIColor whiteColor];
+    
+    [self.peploCollection registerClass:[NIMAdvancedTeamIconCell class] forCellWithReuseIdentifier:NIMAdvancedTeamIconCellID];
+    self.peploCollection.delegate = self;
+    self.peploCollection.dataSource = self;
+    self.peploCollection.showsVerticalScrollIndicator = NO;
+    self.peploCollection.bounces = NO;
+    
     self.navigationItem.title = self.team.teamName;
     self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
     self.tableView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.tableView];
     
-    self.tableView.tableHeaderView = headerView;
+    //    self.tableView.tableHeaderView = headerView;
     self.tableView.tableFooterView = [[UIView alloc]initWithFrame:CGRectZero];
     self.tableView.delegate = self;
     self.tableView.dataSource = self;
@@ -263,6 +297,13 @@
                 }
             }
             wself.memberData = members;
+            //获取成员信息展示,by tim
+            for (NIMTeamMember *member in members) {
+                NIMKitInfo *info = [[NIMKit sharedKit] infoByUser:member.userId option:nil];
+                [wself.dataSoure addObject:info];
+            }
+            [wself collectionViewHigh:members];
+            
         }else if(error.code == NIMRemoteErrorCodeTeamNotMember){
             [wself.view makeToast:@"你已经不在群里" duration:2
                          position:CSToastPositionCenter];
@@ -433,6 +474,115 @@
         [weakSelf reloadData];
     }];
 }
+/*
+ 以下为自定制部分 by tim
+ */
+#pragma mark - 所有改变刷新界面需要调用此方法适配
+- (void)collectionViewHigh:(NSArray *)arr{
+    
+    float  line = (arr.count+2)/HeadNum + ((arr.count+2)%HeadNum != 0);
+    
+    //重新设置大小 （10为偏移量，+10为微调）
+    CGFloat height = (((HeadHeight + 10) *line + 10) >= (self.view.frame.size.height - 20)) ?(self.view.frame.size.height - 20) : ((HeadHeight + 10) *line + 10);
+    self.peploCollection.frame = CGRectMake(0, 0, WIDTH, height);
+    
+    [self.peploCollection reloadData];
+    //刷新
+    [self.tableView reloadData];
+}
+/*
+ UICollectionViewDataSource
+ */
+- (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section{
+    return self.dataSoure.count + 2;
+}
+- (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView{
+    return 1;
+}
+/*
+ 实例化UICollectionView
+ */
+- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath{
+    NIMAdvancedTeamIconCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:NIMAdvancedTeamIconCellID forIndexPath:indexPath];
+    if (indexPath.row < self.dataSoure.count) {//正常头像
+        NIMKitInfo *member = self.dataSoure[indexPath.row];
+        NSURL *avatarURL;
+        if (member.avatarUrlString.length) {
+            avatarURL = [NSURL URLWithString:member.avatarUrlString];
+        }
+        //        [cell.imageView nim_setImageWithURL:avatarURL placeholderImage:member.avatarImage];
+        [cell.imageView sd_setImageWithURL:avatarURL placeholderImage:member.avatarImage];
+        cell.titleLabel.text = member.showName;
+        
+    }else if (indexPath.row == self.dataSoure.count){//删除
+        
+        cell.imageView.image = [UIImage imageNamed:@"group_minus.jpg"];
+        
+    }else  if (indexPath.row == self.dataSoure.count + 1){//添加
+        
+        cell.imageView.image = [UIImage imageNamed:@"group_plus.png"];
+        
+    }
+    
+    return cell;
+}
+/*
+ 定义每个UICollectionView 的大小
+ */
+- (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    
+    return CGSizeMake(HeadWidth, HeadHeight);
+}
+/*
+ 定义每个UICollectionView 的 margin
+ */
+-(UIEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout insetForSectionAtIndex:(NSInteger)section
+{
+    return UIEdgeInsetsMake(10, (WIDTH-HeadNum*HeadWidth)/(HeadNum - 1), 10, (WIDTH-HeadNum*HeadWidth)/(HeadNum - 1));
+}
+/*
+ UICollectionView被选中时调用的方法
+ */
+-(void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    
+    if (indexPath.row < self.dataSoure.count) {
+        if (isOpen) {//删除状态点击头像
+            
+            [self deleteButtonClick:(int)indexPath.row];
+            
+        }else{//非删除状态点击头像
+            NSLog(@"正常点击==%@",self.dataSoure[indexPath.row]);
+        }
+        
+    }else if (indexPath.row  == self.dataSoure.count) {
+        NSLog(@"删除");
+        isOpen = !isOpen;
+        
+    }else if (indexPath.row  == self.dataSoure.count +1){
+        NSLog(@"添加");
+        if (isOpen) {
+            isOpen = NO;
+        }
+        //在这里可以进行界面跳转
+        
+        [self.dataSoure addObject:[NSString stringWithFormat:@"新增:%d",arc4random()%10]];
+    }
+    
+    [self collectionViewHigh:self.dataSoure];
+}
+
+-(void)deleteButtonClick:(int)index{
+    NSLog(@"删除===%d",index);
+    [self.dataSoure removeObjectAtIndex:index];
+    
+    [self collectionViewHigh:self.dataSoure];
+}
+
+/*
+ 以上为自定制部分 by tim
+ */
 
 #pragma mark - UITableViewDelegate
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
@@ -451,7 +601,11 @@
 #pragma mark - UITableViewDataSource
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath{
     id<NTESCardBodyData> bodyData = [self bodyDataAtIndexPath:indexPath];
-    return bodyData.rowHeight;
+    if (indexPath.section==0) {
+        return self.peploCollection.frame.size.height;//by tim
+    }else{
+        return bodyData.rowHeight;
+    }
 }
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{
@@ -475,7 +629,7 @@
             cell = [self builidRedButtonCell:bodyData];
             break;
         case TeamCardRowItemTypeTeamMember:
-            cell = [self builidTeamMemberCell:bodyData];
+            cell = [self builidTeamMemberCell:bodyData withIndexPath:indexPath];
             break;
         case TeamCardRowItemTypeSwitch:
             cell = [self buildTeamSwitchCell:bodyData];
@@ -549,6 +703,7 @@
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     }
     return cell;
+    
 }
 
 - (UITableViewCell *)buildTeamSwitchCell:(id<NTESCardBodyData>)bodyData
@@ -560,6 +715,22 @@
     cell.textLabel.text = bodyData.title;
     cell.switcher.on = bodyData.switchOn;
     cell.switchDelegate = self;
+    
+    return cell;
+}
+
+/*
+ 自定制cell by tim
+ */
+- (UITableViewCell*)builidTeamMemberCell:(id<NTESCardBodyData>) bodyData withIndexPath:(NSIndexPath *)indexPath{
+    
+    UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:TableMemberCellReuseId];
+    if (!cell) {
+        cell = [[UITableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:TableMemberCellReuseId];
+    }
+    if (indexPath.section==0) {
+        [cell addSubview:self.peploCollection];
+    }
     
     return cell;
 }
