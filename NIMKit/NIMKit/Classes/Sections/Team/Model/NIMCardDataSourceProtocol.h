@@ -23,6 +23,7 @@ typedef NS_ENUM(NSInteger, NIMKitTeamCardRowItemType) {
     TeamCardRowItemTypeBlueButton,
     TeamCardRowItemTypeSwitch,
     TeamCardRowItemTypeCheckMark,
+    TeamCardRowItemTypeImage,
 };
 
 

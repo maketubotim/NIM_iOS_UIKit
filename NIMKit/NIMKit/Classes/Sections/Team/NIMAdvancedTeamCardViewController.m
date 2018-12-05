@@ -28,6 +28,8 @@
 #import "NIMAdvancedTeamIconCell.h"
 #import "NIMKit.h"
 #import <SDWebImage/UIImageView+WebCache.h>
+#import "TeamGroupManagerViewController.h"
+#import "GroupQRCodeViewController.h"
 #pragma mark - Team Header View
 #define CardHeaderHeight 89
 
@@ -173,7 +175,7 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     UIActionSheet *_beInviteActionSheet;
     UIActionSheet *_updateInfoActionSheet;
     UIActionSheet *_avatarActionSheet;
-    BOOL isOpen;
+    
 }
 
 @property (nonatomic,strong) UITableView *tableView;
@@ -188,9 +190,14 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
 
 @property (nonatomic,strong) NSDictionary *exConfig;
 
+//by tim
 @property (strong, nonatomic) UICollectionView *peploCollection;
 
 @property (nonatomic, copy)NSMutableArray *dataSoure;
+
+@property (nonatomic,strong) NSArray *exConfigArr;
+
+@property (nonatomic,assign) NIMTeamNotifyState selectState;
 
 @end
 
@@ -217,6 +224,16 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     if (self) {
         _team = team;
         _exConfig = exConfig;
+    }
+    return self;
+}
+
+- (instancetype)initWithTeam:(NIMTeam *)team
+                 exConfigArr:(NSArray *)exConfigArr{
+    self = [self initWithNibName:nil bundle:nil];
+    if (self) {
+        _team = team;
+        _exConfigArr = exConfigArr;
     }
     return self;
 }
@@ -279,8 +296,8 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     headerView.titleLabel.text = self.team.teamName;;
     self.navigationItem.title  = self.team.teamName;
     if (self.myTeamInfo.type == NIMTeamMemberTypeOwner) {
-        UIBarButtonItem *buttonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(onMore:)];
-        self.navigationItem.rightBarButtonItem = buttonItem;
+        //        UIBarButtonItem *buttonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(onMore:)];
+        //        self.navigationItem.rightBarButtonItem = buttonItem;
     }else{
         self.navigationItem.rightBarButtonItem = nil;
     }
@@ -297,6 +314,7 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
                 }
             }
             wself.memberData = members;
+            [wself.dataSoure removeAllObjects];
             //获取成员信息展示,by tim
             for (NIMTeamMember *member in members) {
                 NIMKitInfo *info = [[NIMKit sharedKit] infoByUser:member.userId option:nil];
@@ -327,7 +345,7 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     teamMember.type   = TeamCardRowItemTypeTeamMember;
     
     NIMTeamCardRowItem *teamName = [[NIMTeamCardRowItem alloc] init];
-    teamName.title = @"群名称";
+    teamName.title = @"群聊名称";
     teamName.subTitle = self.team.teamName;
     teamName.action = @selector(updateTeamName);
     teamName.rowHeight = 50.f;
@@ -357,14 +375,8 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     teamAnnouncement.rowHeight = 50.f;
     teamAnnouncement.type   = TeamCardRowItemTypeCommon;
     
-    NIMTeamCardRowItem *teamNotify = [[NIMTeamCardRowItem alloc] init];
-    teamNotify.title  = @"消息提醒";
-    teamNotify.action = @selector(updateTeamNotify);
-    teamNotify.rowHeight = 50.f;
-    teamNotify.type   = TeamCardRowItemTypeCommon;
-    
     NIMTeamCardRowItem *itemQuit = [[NIMTeamCardRowItem alloc] init];
-    itemQuit.title = @"退出高级群";
+    itemQuit.title = @"删除并退出";
     itemQuit.action = @selector(quitTeam);
     itemQuit.rowHeight = 60.f;
     itemQuit.type   = TeamCardRowItemTypeRedButton;
@@ -408,36 +420,103 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     itemBeInvite.rowHeight = 60.f;
     itemBeInvite.type   = TeamCardRowItemTypeCommon;
     
+    //by tim
+    NIMTeamCardRowItem *teamQRCode = [[NIMTeamCardRowItem alloc] init];
+    teamQRCode.title = @"群二维码";
+    teamQRCode.action = @selector(enterGroupQRCode);
+    teamQRCode.rowHeight = 50.f;
+    teamQRCode.type   = TeamCardRowItemTypeImage;
+    
+    NIMTeamCardRowItem *teamManager = [[NIMTeamCardRowItem alloc] init];
+    teamManager.title  = @"群管理";
+    teamManager.action = @selector(enterGroupManager);
+    teamManager.rowHeight = 50.f;
+    teamManager.type   = TeamCardRowItemTypeCommon;
+    
+    NIMTeamCardRowItem *mineNick = [[NIMTeamCardRowItem alloc] init];
+    mineNick.title  = @"我在本群的昵称";
+    mineNick.subTitle = @"Tim";
+    mineNick.action = @selector(updateTeamNotify);
+    mineNick.rowHeight = 50.f;
+    mineNick.type   = TeamCardRowItemTypeCommon;
+    
     BOOL isTop = NO;
-    if (_exConfig && _exConfig[kNIMAdvancedTeamCardConfigTopKey]) {
-        isTop = [_exConfig[kNIMAdvancedTeamCardConfigTopKey] boolValue];
+    //    if (_exConfig && _exConfig[kNIMAdvancedTeamCardConfigTopKey]) {
+    //        isTop = [_exConfig[kNIMAdvancedTeamCardConfigTopKey] boolValue];
+    //    }
+    BOOL isNotify = NO;
+    BOOL isSaveContact = NO;
+    self.selectState = [[NIMSDK sharedSDK].teamManager notifyStateForNewMsg:self.team.teamId];
+    for (NSDictionary *dic in _exConfigArr) {
+        NSArray *keyArr= [dic allKeys];
+        for (int i=0; i<keyArr.count; i++) {
+            NSString *key = keyArr[i];
+            if ([key isEqualToString:@"kNIMAdvancedTeamCardConfigTopKey"]) {
+                isTop = [[dic objectForKey:keyArr[i]] boolValue];
+            }else if ([key isEqualToString:@"kNIMAdvancedTeamCardConfigSaveContactKey"]) {
+                isSaveContact = [[dic objectForKey:keyArr[i]] boolValue];
+            }
+            //            else if ([key isEqualToString:@"kNIMAdvancedTeamCardConfigNotifyKey"]) {
+            //                isNotify  = [[dic objectForKey:keyArr[i]] boolValue];
+            //            }
+        }
     }
+    
     NIMTeamCardRowItem *itemTop = [[NIMTeamCardRowItem alloc] init];
-    itemTop.title            = @"聊天置顶";
+    itemTop.title            = @"置顶聊天";
     itemTop.switchOn         = isTop;
     itemTop.rowHeight        = 50.f;
     itemTop.type             = TeamCardRowItemTypeSwitch;
     
+    NIMTeamCardRowItem *itemSaveToContact = [[NIMTeamCardRowItem alloc] init];
+    itemSaveToContact.title            = @"保存至通讯录";
+    itemSaveToContact.switchOn         = isSaveContact;
+    itemSaveToContact.rowHeight        = 50.f;
+    itemSaveToContact.type             = TeamCardRowItemTypeSwitch;
+    
+    NIMTeamCardRowItem *teamNotify = [[NIMTeamCardRowItem alloc] init];
+    teamNotify.title  = @"消息免打扰";
+    teamNotify.switchOn = self.selectState;
+    teamNotify.rowHeight = 50.f;
+    teamNotify.type   = TeamCardRowItemTypeSwitch;
+    
+    NIMTeamCardRowItem *itemShowNick = [[NIMTeamCardRowItem alloc] init];
+    itemShowNick.title            = @"显示群成员名称";
+    itemShowNick.switchOn         = isSaveContact;
+    itemShowNick.rowHeight        = 50.f;
+    itemShowNick.type             = TeamCardRowItemTypeSwitch;
+    
+    NIMTeamCardRowItem *itemDeleteRecord = [[NIMTeamCardRowItem alloc] init];
+    itemDeleteRecord.title  = @"清空聊天记录";
+    itemDeleteRecord.action = @selector(updateTeamNotify);
+    itemDeleteRecord.rowHeight = 50.f;
+    itemDeleteRecord.type   = TeamCardRowItemTypeCommon;
+    
     if (isOwner) {
         self.bodyData = @[
                           @[teamMember],
-                          @[teamName,teamNick,teamIntro,teamAnnouncement,teamNotify, itemTop],
-                          @[itemAuth],
-                          @[itemInvite,itemUpdateInfo,itemBeInvite],
-                          @[itemDismiss],
+                          @[teamName,teamQRCode,teamManager],
+                          @[teamNotify,itemTop,itemSaveToContact],
+                          @[mineNick,itemShowNick],
+                          @[itemDeleteRecord],
+                          @[itemQuit]//@[itemDismiss],
                           ];
     }else if(isManager){
         self.bodyData = @[
                           @[teamMember],
-                          @[teamName,teamNick,teamIntro,teamAnnouncement,teamNotify, itemTop],
-                          @[itemAuth],
-                          @[itemInvite,itemUpdateInfo,itemBeInvite],
+                          @[teamName,teamQRCode,teamManager],
+                          @[teamNotify,itemTop,itemSaveToContact],
+                          @[mineNick,itemShowNick],
+                          @[itemDeleteRecord],
                           @[itemQuit],
                           ];
     }else{
         self.bodyData = @[
                           @[teamMember],
-                          @[teamName,teamNick,teamIntro,teamAnnouncement,teamNotify, itemTop],
+                          @[teamName,teamQRCode],
+                          @[teamNotify,itemTop,itemSaveToContact],
+                          @[mineNick,itemShowNick],
+                          @[itemDeleteRecord],
                           @[itemQuit],
                           ];
     }
@@ -474,10 +553,11 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
         [weakSelf reloadData];
     }];
 }
+
+#pragma mark - 以下为自定制部分 by tim
 /*
- 以下为自定制部分 by tim
+ 所有改变刷新界面需要调用此方法适配
  */
-#pragma mark - 所有改变刷新界面需要调用此方法适配
 - (void)collectionViewHigh:(NSArray *)arr{
     
     float  line = (arr.count+2)/HeadNum + ((arr.count+2)%HeadNum != 0);
@@ -517,11 +597,12 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     }else if (indexPath.row == self.dataSoure.count){//删除
         
         cell.imageView.image = [UIImage imageNamed:@"group_minus.jpg"];
+        cell.titleLabel.text = nil;
         
     }else  if (indexPath.row == self.dataSoure.count + 1){//添加
         
         cell.imageView.image = [UIImage imageNamed:@"group_plus.png"];
-        
+        cell.titleLabel.text = nil;
     }
     
     return cell;
@@ -548,34 +629,26 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
 {
     
     if (indexPath.row < self.dataSoure.count) {
-        if (isOpen) {//删除状态点击头像
-            
-            [self deleteButtonClick:(int)indexPath.row];
-            
-        }else{//非删除状态点击头像
-            NSLog(@"正常点击==%@",self.dataSoure[indexPath.row]);
-        }
+        
+        NSLog(@"正常点击==%@",self.dataSoure[indexPath.row]);
         
     }else if (indexPath.row  == self.dataSoure.count) {
-        NSLog(@"删除");
-        isOpen = !isOpen;
+        
+        NSMutableArray *users = [[NSMutableArray alloc] init];
+        NSString *currentUserID = [[[NIMSDK sharedSDK] loginManager] currentAccount];
+        [users addObject:currentUserID];
+        NIMContactFriendSelectConfig *config = [[NIMContactFriendSelectConfig alloc] init];
+        config.filterIds = users;
+        config.needMutiSelected = YES;
+        //        config.alreadySelectedMemberId = @[self.session.sessionId];
+        NIMContactSelectViewController *vc = [[NIMContactSelectViewController alloc] initWithConfig:config];
+        vc.delegate = self;
+        [vc show];
         
     }else if (indexPath.row  == self.dataSoure.count +1){
-        NSLog(@"添加");
-        if (isOpen) {
-            isOpen = NO;
-        }
-        //在这里可以进行界面跳转
         
-        [self.dataSoure addObject:[NSString stringWithFormat:@"新增:%d",arc4random()%10]];
+        [self didSelectAddOpeartor];//添加群成员
     }
-    
-    [self collectionViewHigh:self.dataSoure];
-}
-
--(void)deleteButtonClick:(int)index{
-    NSLog(@"删除===%d",index);
-    [self.dataSoure removeObjectAtIndex:index];
     
     [self collectionViewHigh:self.dataSoure];
 }
@@ -633,6 +706,9 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
             break;
         case TeamCardRowItemTypeSwitch:
             cell = [self buildTeamSwitchCell:bodyData];
+            break;
+        case TeamCardRowItemTypeImage:
+            cell = [self buildTeamImageCell:bodyData];
             break;
         default:
             break;
@@ -720,8 +796,22 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
 }
 
 /*
- 自定制cell by tim
+ 自定制cell by tim,自定制二维码图片cell
  */
+- (UITableViewCell *)buildTeamImageCell:(id<NTESCardBodyData>)bodyData
+{
+    UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:TableMemberCellReuseId];
+    if (!cell) {
+        cell = [[UITableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:TableMemberCellReuseId];
+        CGFloat left = 15.f;
+        UIImageView *sep = [[UIImageView alloc] initWithFrame:CGRectMake(cell.nim_width-left, 1.f, 20.f, 20.f)];
+        sep.image = [UIImage imageNamed:@"TeamQRCode"];
+        cell.accessoryView = sep;
+    }
+    cell.textLabel.text = @"群二维码";
+    return cell;
+}
+
 - (UITableViewCell*)builidTeamMemberCell:(id<NTESCardBodyData>) bodyData withIndexPath:(NSIndexPath *)indexPath{
     
     UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:TableMemberCellReuseId];
@@ -864,25 +954,68 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     NIMTeamMemberListViewController *vc = [[NIMTeamMemberListViewController alloc] initTeam:self.team members:self.memberData];
     [self.navigationController pushViewController:vc animated:YES];
 }
-
+//by tim
+- (void)enterGroupManager
+{
+    TeamGroupManagerViewController *vc = [[TeamGroupManagerViewController alloc] init];
+    vc.team = self.team;
+    [self.navigationController pushViewController:vc animated:YES];
+}
+- (void)enterGroupQRCode
+{
+    GroupQRCodeViewController *vc = [[GroupQRCodeViewController alloc] init];
+    [self.navigationController pushViewController:vc animated:YES];
+}
 - (void)cell:(NIMTeamSwitchTableViewCell *)cell onStateChanged:(BOOL)on
 {
     __weak typeof(self) weakSelf = self;
-    if ([cell.textLabel.text isEqualToString:@"聊天置顶"]) {
+    if ([cell.textLabel.text isEqualToString:@"置顶聊天"]) {
         if (_delegate && [_delegate respondsToSelector:@selector(NIMAdvancedTeamCardVCDidSetTop:)]) {
             [_delegate NIMAdvancedTeamCardVCDidSetTop:on];
         }
-    } else {
-        [[[NIMSDK sharedSDK] teamManager] updateNotifyState:on
+        //    }else if ([cell.textLabel.text isEqualToString:@"消息免打扰"]) {
+        //        [[NIMSDK sharedSDK].teamManager updateNotifyState:on inTeam:self.team.teamId completion:^(NSError * _Nullable error)
+        //         {
+        //             if (!error)
+        //             {
+        //                 [weakSelf.view makeToast:@"修改成功" duration:2.0 position:CSToastPositionCenter];
+        //             }
+        //             else
+        //             {
+        //                 [weakSelf.view makeToast:@"修改失败" duration:2.0 position:CSToastPositionCenter];
+        //             }
+        //           [weakSelf reloadData];
+        //         }];
+        //        if (_delegate && [_delegate respondsToSelector:@selector(NIMAdvancedTeamCardVCDidSetNotify:)]) {
+        //            [_delegate NIMAdvancedTeamCardVCDidSetNotify:on];
+        //        }
+    }else if ([cell.textLabel.text isEqualToString:@"保存至通讯录"]) {
+        if (_delegate && [_delegate respondsToSelector:@selector(NIMAdvancedTeamCardVCDidSetSaveContact:)]) {
+            [_delegate NIMAdvancedTeamCardVCDidSetSaveContact:on];
+        }
+    }else {
+        if (on) self.selectState = NIMTeamNotifyStateNone;
+        else self.selectState = NIMTeamNotifyStateAll;
+        [[[NIMSDK sharedSDK] teamManager] updateNotifyState:self.selectState
                                                      inTeam:[self.team teamId]
                                                  completion:^(NSError *error) {
-                                                     if (error) {
+                                                     if (!error) {
+                                                         [weakSelf.view makeToast:@"修改成功"
+                                                                         duration:2
+                                                                         position:CSToastPositionCenter];
+                                                         
+                                                     }else{
                                                          [weakSelf.view makeToast:[NSString stringWithFormat:@"修改失败  error:%zd",error.code]
                                                                          duration:2
                                                                          position:CSToastPositionCenter];
                                                      }
+                                                     
                                                      [weakSelf reloadData];
                                                  }];
+        if (_delegate && [_delegate respondsToSelector:@selector(NIMAdvancedTeamCardVCDidSetNotify:)]) {
+            [_delegate NIMAdvancedTeamCardVCDidSetNotify:on];
+        }
+        
     }
 }
 

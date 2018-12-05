@@ -10,10 +10,14 @@
 #import <NIMSDK/NIMSDK.h>
 
 #define kNIMAdvancedTeamCardConfigTopKey @"kNIMAdvancedTeamCardConfigTopKey"
+#define kNIMAdvancedTeamCardConfigNotifyKey @"kNIMAdvancedTeamCardConfigNotifyKey"
+#define kNIMAdvancedTeamCardConfigSaveContactKey @"kNIMAdvancedTeamCardConfigSaveContactKey"
 
 @protocol NIMAdvancedTeamCardVCProtocol <NSObject>
 @optional
 - (void)NIMAdvancedTeamCardVCDidSetTop:(BOOL)isTop;
+- (void)NIMAdvancedTeamCardVCDidSetNotify:(BOOL)isNotified;
+- (void)NIMAdvancedTeamCardVCDidSetSaveContact:(BOOL)isSavedContact;
 @end
 
 @interface NIMAdvancedTeamCardViewController : UIViewController
@@ -24,5 +28,8 @@
 
 - (instancetype)initWithTeam:(NIMTeam *)team
                     exConfig:(NSDictionary *)exConfig;
+
+- (instancetype)initWithTeam:(NIMTeam *)team
+                 exConfigArr:(NSArray *)exConfigArr;
 
 @end
