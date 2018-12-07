@@ -24,12 +24,6 @@
 #import "NIMAvatarImageView.h"
 #import "NIMKitProgressHUD.h"
 #import "NIMTeamNotifyUpdateViewController.h"
-//by tim
-#import "NIMAdvancedTeamIconCell.h"
-#import "NIMKit.h"
-#import <SDWebImage/UIImageView+WebCache.h>
-#import "TeamGroupManagerViewController.h"
-#import "GroupQRCodeViewController.h"
 #pragma mark - Team Header View
 #define CardHeaderHeight 89
 
@@ -153,7 +147,6 @@
 #define TableMemberCellReuseId  @"tableMemberCell"
 #define TableSwitchReuseId      @"tableSwitchCell"
 
-static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
 #define HEIGHT ([UIScreen mainScreen].bounds.size.height)
 #define WIDTH ([UIScreen mainScreen].bounds.size.width)
 
@@ -161,7 +154,7 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
 #define HeadHeight 80
 #define HeadNum 5
 
-@interface NIMAdvancedTeamCardViewController ()<NIMAdvancedTeamMemberCellActionDelegate,NIMContactSelectDelegate,NIMTeamSwitchProtocol,NIMAdvancedTeamCardHeaderViewDelegate,NIMTeamManagerDelegate,UIActionSheetDelegate,UITableViewDataSource,UITableViewDelegate,UIImagePickerControllerDelegate,UINavigationControllerDelegate,UICollectionViewDelegate,UICollectionViewDataSource>{
+@interface NIMAdvancedTeamCardViewController ()<NIMAdvancedTeamMemberCellActionDelegate,NIMContactSelectDelegate,NIMTeamSwitchProtocol,NIMAdvancedTeamCardHeaderViewDelegate,NIMTeamManagerDelegate,UIActionSheetDelegate,UITableViewDataSource,UITableViewDelegate,UIImagePickerControllerDelegate,UINavigationControllerDelegate>{
     
     UIAlertView *_updateTeamNameAlertView;
     UIAlertView *_updateTeamNickAlertView;
@@ -175,7 +168,8 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     UIActionSheet *_beInviteActionSheet;
     UIActionSheet *_updateInfoActionSheet;
     UIActionSheet *_avatarActionSheet;
-    
+    //by tim
+    UIAlertView *_updateMineNickAlertView;
 }
 
 @property (nonatomic,strong) UITableView *tableView;
@@ -189,9 +183,6 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
 @property(nonatomic,copy) NSArray *memberData;
 
 @property (nonatomic,strong) NSDictionary *exConfig;
-
-//by tim
-@property (strong, nonatomic) UICollectionView *peploCollection;
 
 @property (nonatomic, copy)NSMutableArray *dataSoure;
 
@@ -251,17 +242,6 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     //    headerView.delegate = self;
     //    headerView.nim_size = [headerView sizeThatFits:self.view.nim_size];
     
-    //创建collectionView
-    UICollectionViewFlowLayout *flowLayout= [[UICollectionViewFlowLayout alloc]init];
-    self.peploCollection = [[UICollectionView alloc] initWithFrame:CGRectMake(0, 0, 0, 0) collectionViewLayout:flowLayout];
-    self.peploCollection.backgroundColor = [UIColor whiteColor];
-    
-    [self.peploCollection registerClass:[NIMAdvancedTeamIconCell class] forCellWithReuseIdentifier:NIMAdvancedTeamIconCellID];
-    self.peploCollection.delegate = self;
-    self.peploCollection.dataSource = self;
-    self.peploCollection.showsVerticalScrollIndicator = NO;
-    self.peploCollection.bounces = NO;
-    
     self.navigationItem.title = self.team.teamName;
     self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
     self.tableView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -314,13 +294,6 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
                 }
             }
             wself.memberData = members;
-            [wself.dataSoure removeAllObjects];
-            //获取成员信息展示,by tim
-            for (NIMTeamMember *member in members) {
-                NIMKitInfo *info = [[NIMKit sharedKit] infoByUser:member.userId option:nil];
-                [wself.dataSoure addObject:info];
-            }
-            [wself collectionViewHigh:members];
             
         }else if(error.code == NIMRemoteErrorCodeTeamNotMember){
             [wself.view makeToast:@"你已经不在群里" duration:2
@@ -436,7 +409,7 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     NIMTeamCardRowItem *mineNick = [[NIMTeamCardRowItem alloc] init];
     mineNick.title  = @"我在本群的昵称";
     mineNick.subTitle = @"Tim";
-    mineNick.action = @selector(updateTeamNotify);
+    mineNick.action = @selector(updateMineNick);
     mineNick.rowHeight = 50.f;
     mineNick.type   = TeamCardRowItemTypeCommon;
     
@@ -488,7 +461,7 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     
     NIMTeamCardRowItem *itemDeleteRecord = [[NIMTeamCardRowItem alloc] init];
     itemDeleteRecord.title  = @"清空聊天记录";
-    itemDeleteRecord.action = @selector(updateTeamNotify);
+    itemDeleteRecord.action = @selector(deleteMessageRecord);
     itemDeleteRecord.rowHeight = 50.f;
     itemDeleteRecord.type   = TeamCardRowItemTypeCommon;
     
@@ -555,107 +528,6 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
 }
 
 #pragma mark - 以下为自定制部分 by tim
-/*
- 所有改变刷新界面需要调用此方法适配
- */
-- (void)collectionViewHigh:(NSArray *)arr{
-    
-    float  line = (arr.count+2)/HeadNum + ((arr.count+2)%HeadNum != 0);
-    
-    //重新设置大小 （10为偏移量，+10为微调）
-    CGFloat height = (((HeadHeight + 10) *line + 10) >= (self.view.frame.size.height - 20)) ?(self.view.frame.size.height - 20) : ((HeadHeight + 10) *line + 10);
-    self.peploCollection.frame = CGRectMake(0, 0, WIDTH, height);
-    
-    [self.peploCollection reloadData];
-    //刷新
-    [self.tableView reloadData];
-}
-/*
- UICollectionViewDataSource
- */
-- (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section{
-    return self.dataSoure.count + 2;
-}
-- (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView{
-    return 1;
-}
-/*
- 实例化UICollectionView
- */
-- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath{
-    NIMAdvancedTeamIconCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:NIMAdvancedTeamIconCellID forIndexPath:indexPath];
-    if (indexPath.row < self.dataSoure.count) {//正常头像
-        NIMKitInfo *member = self.dataSoure[indexPath.row];
-        NSURL *avatarURL;
-        if (member.avatarUrlString.length) {
-            avatarURL = [NSURL URLWithString:member.avatarUrlString];
-        }
-        //        [cell.imageView nim_setImageWithURL:avatarURL placeholderImage:member.avatarImage];
-        [cell.imageView sd_setImageWithURL:avatarURL placeholderImage:member.avatarImage];
-        cell.titleLabel.text = member.showName;
-        
-    }else if (indexPath.row == self.dataSoure.count){//删除
-        
-        cell.imageView.image = [UIImage imageNamed:@"group_minus.jpg"];
-        cell.titleLabel.text = nil;
-        
-    }else  if (indexPath.row == self.dataSoure.count + 1){//添加
-        
-        cell.imageView.image = [UIImage imageNamed:@"group_plus.png"];
-        cell.titleLabel.text = nil;
-    }
-    
-    return cell;
-}
-/*
- 定义每个UICollectionView 的大小
- */
-- (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath
-{
-    
-    return CGSizeMake(HeadWidth, HeadHeight);
-}
-/*
- 定义每个UICollectionView 的 margin
- */
--(UIEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout insetForSectionAtIndex:(NSInteger)section
-{
-    return UIEdgeInsetsMake(10, (WIDTH-HeadNum*HeadWidth)/(HeadNum - 1), 10, (WIDTH-HeadNum*HeadWidth)/(HeadNum - 1));
-}
-/*
- UICollectionView被选中时调用的方法
- */
--(void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath
-{
-    
-    if (indexPath.row < self.dataSoure.count) {
-        
-        NSLog(@"正常点击==%@",self.dataSoure[indexPath.row]);
-        
-    }else if (indexPath.row  == self.dataSoure.count) {
-        
-        NSMutableArray *users = [[NSMutableArray alloc] init];
-        NSString *currentUserID = [[[NIMSDK sharedSDK] loginManager] currentAccount];
-        [users addObject:currentUserID];
-        NIMContactFriendSelectConfig *config = [[NIMContactFriendSelectConfig alloc] init];
-        config.filterIds = users;
-        config.needMutiSelected = YES;
-        //        config.alreadySelectedMemberId = @[self.session.sessionId];
-        NIMContactSelectViewController *vc = [[NIMContactSelectViewController alloc] initWithConfig:config];
-        vc.delegate = self;
-        [vc show];
-        
-    }else if (indexPath.row  == self.dataSoure.count +1){
-        
-        [self didSelectAddOpeartor];//添加群成员
-    }
-    
-    [self collectionViewHigh:self.dataSoure];
-}
-
-/*
- 以上为自定制部分 by tim
- */
 
 #pragma mark - UITableViewDelegate
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
@@ -674,11 +546,7 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
 #pragma mark - UITableViewDataSource
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath{
     id<NTESCardBodyData> bodyData = [self bodyDataAtIndexPath:indexPath];
-    if (indexPath.section==0) {
-        return self.peploCollection.frame.size.height;//by tim
-    }else{
-        return bodyData.rowHeight;
-    }
+    return bodyData.rowHeight;
 }
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{
@@ -818,9 +686,6 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     if (!cell) {
         cell = [[UITableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:TableMemberCellReuseId];
     }
-    if (indexPath.section==0) {
-        [cell addSubview:self.peploCollection];
-    }
     
     return cell;
 }
@@ -955,16 +820,20 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     [self.navigationController pushViewController:vc animated:YES];
 }
 //by tim
-- (void)enterGroupManager
+- (void)updateMineNick
 {
-    TeamGroupManagerViewController *vc = [[TeamGroupManagerViewController alloc] init];
-    vc.team = self.team;
-    [self.navigationController pushViewController:vc animated:YES];
+    _updateMineNickAlertView = [[UIAlertView alloc] initWithTitle:@"" message:@"修改我在本群的昵称" delegate:self cancelButtonTitle:@"取消" otherButtonTitles:@"确认", nil];
+    _updateMineNickAlertView.alertViewStyle = UIAlertViewStylePlainTextInput;
+    [_updateMineNickAlertView show];
 }
-- (void)enterGroupQRCode
+- (void)enterGroupManager{}
+
+- (void)enterGroupQRCode{}
+- (void)deleteMessageRecord
 {
-    GroupQRCodeViewController *vc = [[GroupQRCodeViewController alloc] init];
-    [self.navigationController pushViewController:vc animated:YES];
+    _updateMineNickAlertView = [[UIAlertView alloc] initWithTitle:@"清空聊天记录" message:@"确定清空所有聊天记录吗？" delegate:self cancelButtonTitle:@"取消" otherButtonTitles:@"确认", nil];
+    _updateMineNickAlertView.alertViewStyle = UIAlertViewStylePlainTextInput;
+    [_updateMineNickAlertView show];
 }
 - (void)cell:(NIMTeamSwitchTableViewCell *)cell onStateChanged:(BOOL)on
 {
@@ -1079,6 +948,39 @@ static NSString *const NIMAdvancedTeamIconCellID = @"NIMAdvancedTeamIconCell";
     }
     else if (alertView == _dismissTeamAlertView) {
         [self dismissTeamAlert:buttonIndex];
+    }
+    //by tim
+    else if (alertView == _updateMineNickAlertView) {
+        [self updateMineNickAlert:buttonIndex];
+    }
+    
+}
+
+//by tim
+- (void)updateMineNickAlert:(NSInteger)index{
+    switch (index) {
+        case 0://取消
+            break;
+        case 1:{
+            NSString *name = [_updateMineNickAlertView textFieldAtIndex:0].text;
+            if (name.length) {
+                
+                //                [[NIMSDK sharedSDK].teamManager updateTeamName:name teamId:self.team.teamId completion:^(NSError *error) {
+                //                    if (!error) {
+                //                        self.team.teamName = name;
+                //                        [self.view makeToast:@"修改成功" duration:2
+                //                                    position:CSToastPositionCenter];
+                //                        [self reloadData];
+                //                    }else{
+                //                        [self.view makeToast:[NSString stringWithFormat:@"修改失败 code:%zd",error.code] duration:2
+                //                                    position:CSToastPositionCenter];
+                //                    }
+                //                }];
+            }
+            break;
+        }
+        default:
+            break;
     }
 }
 
