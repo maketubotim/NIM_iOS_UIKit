@@ -52,6 +52,11 @@
     if (recent.unreadCount) {
         self.badgeView.hidden = NO;
         self.badgeView.badgeValue = @(recent.unreadCount).stringValue;
+        BOOL needNotify    = [[NIMSDK sharedSDK].userManager notifyForNewMsg:recent.session.sessionId];
+        BOOL needNotifyGroup = ![[NIMSDK sharedSDK].teamManager notifyStateForNewMsg:recent.session.sessionId];
+        if (!needNotify||!needNotifyGroup) {
+            self.badgeView.hidden = YES;
+        }
     }else{
         self.badgeView.hidden = YES;
     }
